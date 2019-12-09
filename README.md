@@ -27,7 +27,7 @@ Pembagian IP server sebagai berikut:
 ### 2. Gambaran Sistem
 ### 3. Proses Konfigurasi dan Instalasi
 
-1. Install Dan Mengkonfigurasi Cluster Manager
+#### 3.1. Install Dan Mengkonfigurasi Cluster Manager
 
 - Pertama-tama akan dimulai dengan mengunduh dan menginstal MySQL Cluster Manager, `ndb_mgmd`.
 - Login pada server `192.168.16.190` dan download file `.deb` berikut:
@@ -95,10 +95,11 @@ hostname=192.168.16.189 # In our case the MySQL server/client is on the same Dro
 sudo ndb_mgmd -f /var/lib/mysql-cluster/config.ini
 ```
 - Dan seharusnya akan mengeluarkan output berikut:
+![image](img/1.JPG)
 ```bash
 MySQL Cluster Management Server mysql-5.7.22 ndb-7.6.6
-2018-07-25 21:48:39 [MgmtSrvr] INFO     -- The default config directory '/usr/mysql-cluster' does not exist. Trying to create it...
-2018-07-25 21:48:39 [MgmtSrvr] INFO     -- Successfully created config directory
+2019-12-09 08:09:35 [MgmtSrvr] INFO     -- The default config directory '/usr/mysql-cluster' does not exist. Trying to create it...
+2019-12-09 08:09:35 [MgmtSrvr] INFO     -- Sucessfully created config directory
 ```
 - Ini menunjukkan bahwa server MySQL Cluster Management telah berhasil diinstal.
 - Idealnya, setiap ingin memulai server Manajemen Cluster secara otomatis saat boot. Untuk melakukan ini, kami akan membuat dan mengaktifkan layanan systemd.
@@ -145,19 +146,24 @@ sudo systemctl start ndb_mgmd
 sudo systemctl status ndb_mgmd
 ```
 Jika berhasil akan mengeluarkan output sebagai berikut:
+![image](img/2.JPG)
 ```bash
-ndb_mgmd.service - MySQL NDB Cluster Management Server
+● ndb_mgmd.service - MySQL NDB Cluster Management Server
    Loaded: loaded (/etc/systemd/system/ndb_mgmd.service; enabled; vendor preset: enabled)
-   Active: active (running) since Thu 2018-07-26 21:23:37 UTC; 3s ago
-  Process: 11184 ExecStart=/usr/sbin/ndb_mgmd -f /var/lib/mysql-cluster/config.ini (code=exited, status=0/SUCCESS)
- Main PID: 11193 (ndb_mgmd)
-    Tasks: 11 (limit: 4915)
+   Active: active (running) since Mon 2019-12-09 08:13:03 UTC; 8s ago
+  Process: 13244 ExecStart=/usr/sbin/ndb_mgmd -f /var/lib/mysql-cluster/config.ini (code=exited, status=0/SUCCESS)
+ Main PID: 13253 (ndb_mgmd)
+    Tasks: 11 (limit: 504)
    CGroup: /system.slice/ndb_mgmd.service
-           └─11193 /usr/sbin/ndb_mgmd -f /var/lib/mysql-cluster/config.ini
+           └─13253 /usr/sbin/ndb_mgmd -f /var/lib/mysql-cluster/config.ini
+
+Dec 09 08:13:03 server190 systemd[1]: Starting MySQL NDB Cluster Management Server...
+Dec 09 08:13:03 server190 ndb_mgmd[13244]: MySQL Cluster Management Server mysql-5.7.22 ndb-7.6.6
+Dec 09 08:13:03 server190 systemd[1]: Started MySQL NDB Cluster Management Server.
 ```
 - Yang menunjukkan bahwa server MySQL Cluster Management `ndb_mgmd` sekarang berjalan sebagai layanan `systemd`.
 - Langkah terakhir untuk mengatur Cluster Manager adalah mengizinkan koneksi masuk dari node MySQL Cluster lainnya di jaringan pribadi kami.
-- Jika Anda tidak mengonfigurasi ufw firewall saat mengatur Tetesan ini, Anda dapat langsung beralih ke bagian selanjutnya.
+- Jika Anda tidak mengonfigurasi ufw firewall saat mengatur server ini, Anda dapat langsung beralih ke bagian selanjutnya.
 - Kami akan menambahkan aturan untuk memungkinkan koneksi masuk lokal dari kedua node data:
 ```bash
 sudo ufw allow from 192.168.16.184
@@ -170,4 +176,135 @@ sudo ufw allow from 192.168.16.186
 Rule added
 ```
 - Cluster Manager sekarang seharusnya sudah aktif dan berjalan, dan dapat berkomunikasi dengan node Cluster lainnya melalui jaringan pribadi.
-2. Instalasi dan Konfigurasi Data Nodes
+#### 3.2. Instalasi dan Konfigurasi Data Nodes
+
+**Note: Semua perintah disini harus dijalankan disemua data nodes.**
+
+- Sekarang, masuk ke node pertama Anda (dalam tutorial ini, 192.168.16.184), dan unduh file deb ini:
+```bash
+wget https://dev.mysql.com/get/Downloads/MySQL-Cluster-7.6/mysql-cluster-community-data-node_7.6.6-1ubuntu18.04_amd64.deb
+```
+
+- Sebelum menginstall data node binary, kita perlu menginstall `libclass-methodmaker-perl`
+
+```bash
+sudo apt update
+sudo apt install libclass-methodmaker-perl
+```
+![image](img/3.JPG)
+![image](img/4.JPG)
+![image](img/5.JPG)
+
+- Lalu install data node binary menggunakan `dpkg`:
+```bash
+sudo dpkg -i mysql-cluster-community-data-node_7.6.6-1ubuntu18.04_amd64.deb
+```
+![image](img/6.JPG)
+
+
+- Node data menarik konfigurasinya dari lokasi standar MySQL, `/etc/my.cnf`. Buat file ini menggunakan editor teks favorit Anda dan mulai mengeditnya:
+
+```bash
+sudo nano /etc/my.cnf
+```
+- Tambahkan parameter konfigurasi berikut ke file:
+
+```bash
+[mysql_cluster]
+# Options for NDB Cluster processes:
+ndb-connectstring=198.51.100.2  # location of cluster manager
+```
+
+- Menentukan lokasi node Cluster Manager adalah satu-satunya konfigurasi yang diperlukan untuk memulai ndbd. Konfigurasi lainnya akan ditarik langsung dari manajer.
+
+- Simpan dan keluar dari file.
+
+- Dalam contoh kami, simpul data akan mengetahui bahwa direktori datanya adalah / usr / local / mysql / data, sesuai konfigurasi manajer. Sebelum memulai daemon, kami akan membuat direktori ini pada simpul:
+
+```bash
+sudo mkdir -p /usr/local/mysql/data
+```
+
+- Sekarang kita bisa memulai node menggunakan perintah dibawah ini:
+```bash
+sudo ndbd
+```
+
+- Seharusnya akan mengeluarkan berikut:
+```bash 
+2019-12-09 08:41:29 [ndbd] INFO     -- Angel connected to '192.168.16.190:1186'
+2019-12-09 08:41:29 [ndbd] INFO     -- Angel allocated nodeid: 2
+```
+![image](img/7.JPG)
+- Daemon node data NDB telah berhasil diinstal dan sekarang berjalan di server Anda.
+
+- Kita juga perlu mengizinkan koneksi masuk dari node MySQL Cluster lainnya melalui jaringan pribadi.
+
+- Jika Anda tidak mengonfigurasi firewall ufw saat mengatur server ini, Anda dapat langsung beralih ke menyiapkan layanan systemd untuk ndbd.
+
+- Kami akan menambahkan aturan untuk mengizinkan koneksi masuk dari Cluster Manager dan node data lainnya:
+
+```bash
+sudo ufw allow from 192.168.16.185
+sudo ufw allow from 192.168.16.186
+```
+![image](img/8.JPG)
+- Server node data MySQL Anda sekarang dapat berkomunikasi dengan Cluster Manager dan simpul data lainnya melalui jaringan pribadi.
+
+- Terakhir, kami juga ingin daemon simpul data dijalankan secara otomatis ketika server melakukan booting. Kami akan mengikuti prosedur yang sama dengan yang digunakan untuk Cluster Manager, dan membuat layanan systemd.
+
+- Sebelum kami membuat layanan, kami akan mematikan proses ndbd yang sedang berjalan:
+
+```bash
+sudo pkill -f ndbd
+```
+
+- Buka dan edit systemd unit file
+```bash
+sudo nano /etc/systemd/system/ndbd.service
+```
+- Lalu tempelkan potongan kode berikut
+```bash
+[Unit]
+Description=MySQL NDB Data Node Daemon
+After=network.target auditd.service
+
+[Service]
+Type=forking
+ExecStart=/usr/sbin/ndbd
+ExecReload=/bin/kill -HUP $MAINPID
+KillMode=process
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+```
+
+- Di sini, kami telah menambahkan sekumpulan opsi yang menginstruksikan systemd tentang cara memulai, menghentikan, dan memulai kembali proses ndbd. Untuk mempelajari lebih lanjut tentang opsi yang digunakan dalam konfigurasi unit ini, bacalah manual sistemd.
+
+- Simpan dan tutup file.
+
+- Sekarang, muat ulang konfigurasi manajer systemd menggunakan daemon-reload:
+
+```bash
+sudo systemctl daemon-reload
+```
+- Untuk mengaktifkan service yang baru kita buat sehingga dapat berjalan ketika reboot 
+```bash
+sudo systemctl enable ndbd
+```
+- Memulai service
+
+```bash
+sudo systemctl start ndbd
+```
+
+- Untuk memverifikasi apakah NDB Cluster Management berjalan
+
+```bash
+sudo systemctl status ndbd
+```
+- Seharusnya dapat mengeluarkan berikut
+![image](img/9.JPG)
+
+- Yang menunjukkan bahwa daemon node data MySQL Cluster ndbd sekarang berjalan sebagai layanan systemd. Node data Anda sekarang harus berfungsi penuh dan dapat terhubung ke MySQL Cluster Manager.
