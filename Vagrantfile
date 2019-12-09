@@ -7,7 +7,32 @@
 # you're doing.
 
 Vagrant.configure("2") do |config|
-  
+  config.vm.define "server190" do |node|
+    node.vm.hostname = "server190"
+    node.vm.box = "bento/ubuntu-18.04"
+    node.vm.network "private_network", ip: "192.168.16.190"
+    
+    node.vm.provider "virtualbox" do |vb|
+      vb.name = "server190"
+      vb.gui = false
+      vb.memory = "1024"
+    end
+    #node.vm.provision "shell", path: "provision/server190.sh", privileged: false
+  end
+
+  config.vm.define "server191" do |node|
+    node.vm.hostname = "server191"
+    node.vm.box = "bento/ubuntu-18.04"
+    node.vm.network "private_network", ip: "192.168.16.191"
+    
+    node.vm.provider "virtualbox" do |vb|
+      vb.name = "server191"
+      vb.gui = false
+      vb.memory = "1024"
+    end
+  end
+
+
   (4..9).each do |i|
     config.vm.define "server18#{i}" do |node|
       node.vm.hostname = "server18#{i}"
@@ -17,27 +42,12 @@ Vagrant.configure("2") do |config|
       node.vm.provider "virtualbox" do |vb|
         vb.name = "server18#{i}"
         vb.gui = false
-        vb.memory = "512"
+        vb.memory = "1024"
       end
-  
+      #node.vm.provision "shell", path: "provision/bootstrap184-186.sh", privileged: false
+
     end
   end
-
-  (1..2).each do |i|
-    config.vm.define "server19#{i-1}" do |node|
-      node.vm.hostname = "server19#{i-1}"
-      node.vm.box = "bento/ubuntu-18.04"
-      node.vm.network "private_network", ip: "192.168.16.19#{i-1}"
-      
-      node.vm.provider "virtualbox" do |vb|
-        vb.name = "server19#{i-1}"
-        vb.gui = false
-        vb.memory = "512"
-      end
-  
-    end
-  end
-
 
 end
 

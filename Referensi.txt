@@ -1,0 +1,2 @@
+https://www.digitalocean.com/community/tutorials/how-to-create-a-multi-node-mysql-cluster-on-ubuntu-18-04
+https://dev.mysql.com/doc/refman/5.7/en/mysql-cluster-overview.html

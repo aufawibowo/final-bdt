@@ -212,7 +212,7 @@ sudo nano /etc/my.cnf
 ```bash
 [mysql_cluster]
 # Options for NDB Cluster processes:
-ndb-connectstring=198.51.100.2  # location of cluster manager
+ndb-connectstring=192.168.16.190  # location of cluster manager
 ```
 
 - Menentukan lokasi node Cluster Manager adalah satu-satunya konfigurasi yang diperlukan untuk memulai ndbd. Konfigurasi lainnya akan ditarik langsung dari manajer.
@@ -308,3 +308,99 @@ sudo systemctl status ndbd
 ![image](img/9.JPG)
 
 - Yang menunjukkan bahwa daemon node data MySQL Cluster ndbd sekarang berjalan sebagai layanan systemd. Node data Anda sekarang harus berfungsi penuh dan dapat terhubung ke MySQL Cluster Manager.
+
+#### 3.3. Mengkonfigurasi Dan Memulai MySQL Server dan Client
+
+- Server MySQL standar, seperti yang tersedia di repositori APT Ubuntu, tidak mendukung mesin MySQL Cluster NDB. Ini berarti kita perlu menginstal server SQL khusus yang dikemas dengan perangkat lunak MySQL Cluster lain yang telah kita instal dalam tutorial ini.
+- Login di setiap server mysql yaitu di `192.168.187`, `192.168.16.188`, `192.168.16.189` dan lakukan langkah berikut
+Download MySQL Cluster
+```bash
+wget https://dev.mysql.com/get/Downloads/MySQL-Cluster-7.6/mysql-cluster_7.6.6-1ubuntu18.04_amd64.deb-bundle.tar
+```
+Extract file tersebut kedalam file install
+```bash
+mkdir install
+tar -xvf mysql-cluster_7.6.6-1ubuntu18.04_amd64.deb-bundle.tar -C install/
+cd install
+sudo apt update
+sudo apt install libaio1 libmecab2
+sudo dpkg -i mysql-common_7.6.6-1ubuntu18.04_amd64.deb
+sudo dpkg -i mysql-cluster-community-client_7.6.6-1ubuntu18.04_amd64.deb
+sudo dpkg -i mysql-client_7.6.6-1ubuntu18.04_amd64.deb
+sudo dpkg -i mysql-cluster-community-server_7.6.6-1ubuntu18.04_amd64.deb
+```
+- Kemudian aakan diminta password untuk akses admin. Simpan ini.
+```bash
+sudo dpkg -i mysql-server_7.6.6-1ubuntu18.04_amd64.deb
+```
+```bash
+sudo nano /etc/mysql/my.cnf
+```
+- Masukkan file konfigurasi berikut kedalam my.cnf
+```bash
+# Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; version 2 of the License.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
+
+#
+# The MySQL Cluster Community Server configuration file.
+#
+# For explanations see
+# http://dev.mysql.com/doc/mysql/en/server-system-variables.html
+
+# * IMPORTANT: Additional settings that can override those from this file!
+#   The files must end with '.cnf', otherwise they'll be ignored.
+#
+!includedir /etc/mysql/conf.d/
+!includedir /etc/mysql/mysql.conf.d/
+
+[mysqld]
+# Options for mysqld process:
+ndbcluster                      # run NDB storage engine
+
+[mysql_cluster]
+# Options for NDB Cluster processes:
+ndb-connectstring=192.168.16.190 # location of management server
+```
+- Restart service
+```bash
+sudo systemctl restart mysql
+```
+- Kemudian aktifkan kembali mysql
+```bash
+sudo systemctl enable mysql
+```
+
+#### 3.4. Memverifikasi Instalasi MySQL
+
+- Akses kedalam mysql dengan cara
+```bash
+mysql -u root -p 
+```
+- Jika berhasil akan melihat layar sebagai berikut:
+![gambar](img/11.JPG)
+
+Didalam MySQL Client jalankan:
+```sql
+SHOW ENGINE NDB STATUS \G
+```
+![gambar](img/12.JPG)
+Untuk memastikan bahwa semua server terhubung ke server manager
+```
+ndb_mgm
+```
+- Jika berhasil akan mengeluarkan output sebagai berikut
+![gambar](img/10.JPG)
+
+#### 3.4. Memasukkan Data Kedalam Database
