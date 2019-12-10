@@ -404,3 +404,111 @@ ndb_mgm
 ![gambar](img/10.JPG)
 
 #### 3.4. Memasukkan Data Kedalam Database
+
+- Disini kami menggunakan MySQL Workbench untuk memasukkan data kedalam server MySQL dengan konfigurasi berikut
+![gambr](img/13.JPG)
+
+- Telah dimasukkan seluruh data, dan berikut hasilnya. Di kedua server.
+![gambar](img/15.JPG)
+
+### Monitoring Grafana
+- Untuk melakukan monitoring grafana perlu dilakukan instalasi terhadap MySQL Exporter, Prometheus dan Grafana itu sendiri. Berikut instalasinya
+- Membuat service user
+```bash
+sudo useradd --no-create-home --shell /bin/false prometheus
+sudo useradd --no-create-home --shell /bin/false node_exporter
+```
+
+```bash
+sudo mkdir /etc/prometheus
+sudo mkdir /var/lib/prometheus
+```
+- Set user dan group ownership ke direktory baru ke prometheus user
+```bash
+sudo chown prometheus:prometheus /etc/prometheus
+sudo chown prometheus:prometheus /var/lib/prometheus
+```
+- Download prometheus
+```bash
+cd ~
+curl -LO https://github.com/prometheus/prometheus/releases/download/v2.0.0/prometheus-2.0.0.linux-amd64.tar.gz
+```
+- Unpack hasil download
+```bash
+tar xvf prometheus-2.0.0.linux-amd64.tar.gz
+```
+- Copy dua binaries tersebut
+```bash
+sudo cp prometheus-2.0.0.linux-amd64/prometheus /usr/local/bin/
+sudo cp prometheus-2.0.0.linux-amd64/promtool /usr/local/bin/
+```
+- Set user dan group ownership
+```bash
+sudo chown prometheus:prometheus /usr/local/bin/prometheus
+sudo chown prometheus:prometheus /usr/local/bin/promtool
+```
+- Copy files
+```bash
+sudo cp -r prometheus-2.0.0.linux-amd64/consoles /etc/prometheus
+sudo cp -r prometheus-2.0.0.linux-amd64/console_libraries /etc/prometheus
+```
+- Set user dan group ownership pada folder
+```bash
+sudo chown -R prometheus:prometheus /etc/prometheus/consoles
+sudo chown -R prometheus:prometheus /etc/prometheus/console_libraries
+```
+- Konfigurasi prometheus
+```bash
+sudo nano /etc/prometheus/prometheus.yml
+```
+```yaml
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: 'prometheus'
+    scrape_interval: 5s
+    static_configs:
+      - targets: ['localhost:9090']
+```
+![img](img/16.JPG)
+
+- Jalankan prometheus
+```
+sudo -u prometheus /usr/local/bin/prometheus \
+    --config.file /etc/prometheus/prometheus.yml \
+    --storage.tsdb.path /var/lib/prometheus/ \
+    --web.console.templates=/etc/prometheus/consoles \
+    --web.console.libraries=/etc/prometheus/console_libraries
+```
+![img](img/17.JPG)
+ 
+#### Install MySQL Exporter
+
+- Download MySQL Exporter
+```bash
+wget https://github.com/prometheus/mysqld_exporter/releases/download/v0.11.0/mysqld_exporter-0.11.0.linux-amd64.tar.gz
+```
+- Extract file tersebut
+```bash
+tar xvzf mysqld_exporter-0.11.0.linux-amd64.tar.gz
+```
+- Pindahkan ke 
+```bash
+cd mysqld_exporter-0.11.0.linux-amd64/
+sudo mv mysqld_exporter /usr/local/bin/
+```
+- Buat user baru di MySQL
+```bash
+sudo mysql
+CREATE USER 'exporter'@'localhost' IDENTIFIED BY 'password' WITH MAX_USER_CONNECTIONS 3;
+GRANT PROCESS, REPLICATION CLIENT, SELECT ON *.* TO 'exporter'@'localhost';
+```
+
+- Buat MySQL Exporter Service di
+![img](img/18.JPG)
+- Restart daemon dan memulai service
+![img](img/19.JPG)
+
+
+
